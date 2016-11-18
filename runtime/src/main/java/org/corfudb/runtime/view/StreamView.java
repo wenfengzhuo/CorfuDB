@@ -47,6 +47,10 @@ public class StreamView implements AutoCloseable {
         return streamContexts.first();
     }
 
+    public long write(byte[] bytes) {
+        return write(bytes);
+    }
+
     /**
      * Write an object to this stream, returning the physical address it
      * was written at.
@@ -59,7 +63,7 @@ public class StreamView implements AutoCloseable {
      * @param object The object to write to the stream.
      * @return The address this
      */
-    public long write(Object object) {
+    long write(Object object) {
         return acquireAndWrite(object, null, null);
     }
 
@@ -79,7 +83,7 @@ public class StreamView implements AutoCloseable {
      *                              on a previously acquired token.
      * @return The address this object was written at.
      */
-    public long acquireAndWrite(Object object, Function<TokenResponse, Boolean> acquisitionCallback,
+    long acquireAndWrite(Object object, Function<TokenResponse, Boolean> acquisitionCallback,
                                 Function<TokenResponse, Boolean> deacquisitionCallback) {
         boolean replexOverwrite = false;
         boolean overwrite = false;
@@ -153,7 +157,7 @@ public class StreamView implements AutoCloseable {
      * @param read The current address we are reading from.
      * @return A list of entries that we have resolved for reading.
      */
-    public NavigableSet<Long> resolveBackpointersToRead(UUID streamID, long read) {
+    NavigableSet<Long> resolveBackpointersToRead(UUID streamID, long read) {
         long latestToken = runtime.getSequencerView().nextToken(Collections.singleton(streamID), 0).getToken();
         log.trace("Read[{}]: latest token at {}, read at: {}", streamID, latestToken, read);
         if (latestToken < read) {
