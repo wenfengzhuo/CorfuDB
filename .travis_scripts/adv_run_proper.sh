@@ -4,7 +4,7 @@ set -x
 
 # Use TravisCI's build of Erlang 17.5
 
-mkdir $HOME/otp
+mkdir -p $HOME/otp
 (
     cd $HOME/otp
     wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/12.04/erlang-17.5-x86_64.tar.bz2
@@ -80,10 +80,12 @@ set -x
 errors=0
 cd test/src/test/erlang
 ./Build.sh proper
-# ./Build.sh proper-shell -noshell -s map_qc cmd_prop
-# errors=`expr $errors + $?`
-# ./Build.sh proper-shell -noshell -s map_qc cmd_prop_parallel
-# errors=`expr $errors + $?`
+
+/usr/bin/time ./Build.sh proper-shell -noshell -s map_qc cmd_prop
+errors=`expr $errors + $?`
+
+/usr/bin/time ./Build.sh proper-shell -noshell -s map_qc cmd_prop_parallel
+errors=`expr $errors + $?`
 
 # Stop server
 killall java ; sleep 1 ; killall -9 java ; sleep 1
