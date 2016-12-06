@@ -13,7 +13,8 @@ mkdir -p $HOME/otp
 
     # Does it work?
     which erl
-    erl -s erlang halt
+    # As a side effect, this should start epmd
+    erl -sname testing -s erlang halt
 )
 
 # Clone & build PropEr.
@@ -58,6 +59,7 @@ while {1} {
 
 EOF
 chmod +x $data_dir/run
+ps axww | grep epmd
 $data_dir/run > $log_file 2>&1 &
 sleep 1
 
@@ -87,8 +89,9 @@ errors=`expr $errors + $?`
 /usr/bin/time ./Build.sh proper-shell -noshell -s map_qc cmd_prop_parallel
 errors=`expr $errors + $?`
 
-# Stop server
+# Stop servers
 killall java ; sleep 1 ; killall -9 java ; sleep 1
+killall epmd ; sleep 1 ; killall -9 epmd
 
 # Report result (stdout, exit status)
 
