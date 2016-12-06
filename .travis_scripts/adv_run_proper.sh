@@ -88,10 +88,9 @@ cd test/src/test/erlang
 # Stop server
 killall java ; sleep 1 ; killall -9 java ; sleep 1
 
-# Exampine results
+# Report result (stdout, exit status)
+
 # egrep 'ERR|WARN' $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
 cat $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
-
-# TODO report result (stdout, exit status)
 
 exit $errors
