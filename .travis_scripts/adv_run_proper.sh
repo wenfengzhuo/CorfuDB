@@ -9,13 +9,12 @@ mkdir -p $HOME/otp
     cd $HOME/otp
     wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/12.04/erlang-17.5-x86_64.tar.bz2
     tar xf $HOME/otp/erlang-17.5-x86_64.tar.bz2 -C $HOME/otp
-    . $HOME/otp/17.5/activate
-
-    # Does it work?
-    which erl
-    # As a side effect, this should start epmd
-    erl -sname testing -s erlang halt
 )
+# Does it work?
+. $HOME/otp/17.5/activate
+
+which erl
+erl  -eval '{io:format(user, "~p\n", [catch orddict:is_empty([])]), timer:sleep(1000), erlang:halt(0)}.'
 
 # Clone & build PropEr.
 
@@ -31,9 +30,14 @@ export PROPER_DIR=$HOME/otp/proper
 # We need Expect to deal with the Clojure shell's use of a pty.
 sudo apt-get -y install expect
 
-# Start server.
-killall java ; sleep 1 ; killall -9 java ; sleep 1
+# Stop all java processes.
+killall java ; sleep 1 ; killall -9 java
+sleep 1
 
+# As a side effect, this should start epmd
+erl -sname testing -s erlang halt
+
+# Start server.
 data_dir=/tmp/some/path
 rm -rf $data_dir ; mkdir -p $data_dir
 log_file=$data_dir/server-log.out
@@ -90,7 +94,7 @@ errors=`expr $errors + $?`
 errors=`expr $errors + $?`
 
 # Stop servers
-killall java ; sleep 1 ; killall -9 java ; sleep 1
+killall java ; sleep 1 ; killall -9 java
 killall epmd ; sleep 1 ; killall -9 epmd
 
 # Report result (stdout, exit status)
