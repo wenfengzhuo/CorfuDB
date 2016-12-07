@@ -1,23 +1,21 @@
 #!/bin/bash
 
-set -x
+# set -x
 
-# Use TravisCI's build of Erlang 17.5
-
+echo '## Use TravisCI build of Erlang 17.5'
 mkdir -p $HOME/otp
 (
     cd $HOME/otp
     wget https://s3.amazonaws.com/travis-otp-releases/ubuntu/12.04/erlang-17.5-x86_64.tar.bz2
     tar xf $HOME/otp/erlang-17.5-x86_64.tar.bz2 -C $HOME/otp
 )
-# Does it work?
+echo '## Does Erlang work?'
 . $HOME/otp/17.5/activate
 
 which erl
 erl  -eval '{io:format(user, "~p\n", [catch orddict:is_empty([])]), timer:sleep(1000), erlang:halt(0)}.'
 
-# Clone & build PropEr.
-
+echo '## Clone & build PropEr.'
 (
     cd $HOME/otp
     git clone git://github.com/manopapad/proper.git
@@ -27,17 +25,17 @@ erl  -eval '{io:format(user, "~p\n", [catch orddict:is_empty([])]), timer:sleep(
 )
 export PROPER_DIR=$HOME/otp/proper
 
-# We need Expect to deal with the Clojure shell's use of a pty.
+echo '## Install Expect to deal with the pty expected by the Clojure shell'
 sudo apt-get -y install expect
 
-# Stop all java processes.
+echo '## Stop all java processes.'
 killall java ; sleep 1 ; killall -9 java
 sleep 1
 
-# As a side effect, this should start epmd
-erl -sname testing -s erlang halt
+echo '## Start epmd'
+erl -noshell -sname testing -s erlang halt
 
-# Start server.
+echo '## Start Corfu server'
 data_dir=/tmp/some/path
 rm -rf $data_dir ; mkdir -p $data_dir
 log_file=$data_dir/server-log.out
@@ -67,8 +65,9 @@ ps axww | grep epmd
 $data_dir/run > $log_file 2>&1 &
 sleep 1
 
+echo '## Wait for Corfu server to be alive ... ' `date`
 count=0
-set +x
+# set +x
 while [ $count -lt 30 ]; do
     if [ `grep "Sequencer recovery requested" $log_file | wc -l` -ne 0 ]; then
         break
@@ -76,16 +75,18 @@ while [ $count -lt 30 ]; do
     sleep 1
     count=`expr $count + 1`
 done
+echo '## Done waiting ... ' `date`
 
-# TODO New server's endpoint name -> PropEr?
+# set -x
 
-# Run PropEr tests
-
-set -x
-
-errors=0
+echo '## Build PropEr'
 cd test/src/test/erlang
 ./Build.sh proper
+
+
+echo '## Run QuickCheck tests'
+errors=0
+set -x
 
 /usr/bin/time ./Build.sh proper-shell -noshell -s map_qc cmd_prop
 errors=`expr $errors + $?`
@@ -93,13 +94,16 @@ errors=`expr $errors + $?`
 /usr/bin/time ./Build.sh proper-shell -noshell -s map_qc cmd_prop_parallel
 errors=`expr $errors + $?`
 
-# Stop servers
+set +x
+
+echo '## Stop server processes'
 killall java ; sleep 1 ; killall -9 java
 killall epmd ; sleep 1 ; killall -9 epmd
 
-# Report result (stdout, exit status)
+echo '## Report result (stdout, exit status)'
 
 # egrep 'ERR|WARN' $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
 cat $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
 
+echo '## PropEr test final exit status:' $errors
 exit $errors
