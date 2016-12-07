@@ -103,7 +103,9 @@ killall epmd ; sleep 1 ; killall -9 epmd
 echo '## Report result (stdout, exit status)'
 
 # egrep 'ERR|WARN' $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
-cat $log_file | egrep -v 'Sequencer recovery requested but checkpoint not set'
+cat $log_file | \
+    egrep -v 'Sequencer recovery requested but checkpoint not set' | \
+    sed '/expect: spawn id/,$d'
 
 echo '## PropEr test final exit status:' $errors
 exit $errors
