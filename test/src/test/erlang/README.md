@@ -103,13 +103,13 @@ Clojure CLI shell.  Please add the following text to the file
 
     (def q-opts (new java.util.HashMap))
     (.put q-opts "<port>" "8000")
-    (new org.corfudb.cmdlets.QuickCheckMode q-opts)
+    (new org.corfudb.util.quickcheck.QuickCheckMode q-opts)
     (def server-args  "-l /tmp/some/path -s -d ERROR 8000")
     (org.corfudb.infrastructure.CorfuServer/main (into-array String (.split server-args " ")))
 
 To start the corfu server, use:
 
-    cat /tmp/start-corfu-server-with-quickcheck | bin/shell
+    cat /tmp/start-corfu-server-with-quickcheck | java -Dlogback.configurationFile=./runtime/src/main/resources/logback.xml -cp `echo */target/*shaded.jar | sed 's/ /:/g'`:test/target/test-0.1-SNAPSHOT-tests.jar org.corfudb.shell.ShellMain
 
 If you wish to change the server's command line arguments, adjust the
 `server-args` string accordingly.

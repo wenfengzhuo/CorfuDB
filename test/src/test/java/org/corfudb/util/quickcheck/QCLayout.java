@@ -1,4 +1,4 @@
-package org.corfudb.cmdlets;
+package org.corfudb.util.quickcheck;
 
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
@@ -28,20 +28,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
-import static org.fusesource.jansi.Ansi.Color.*;
-import static org.fusesource.jansi.Ansi.ansi;
+import static org.corfudb.util.quickcheck.QCUtil.replyErr;
+import static org.corfudb.util.quickcheck.QCUtil.replyOk;
 
-/**
- * Created by mwei on 12/10/15.
- */
 @Slf4j
-public class corfu_layout implements ICmdlet {
-
+public class QCLayout {
     private static Map<String, NettyClientRouter> routers = new ConcurrentHashMap<>();
     private static Map<String, CorfuRuntime> setEpochRTs = new ConcurrentHashMap<>();
 
     private static final String USAGE =
-            "corfu_layout, directly interact with a layout server.\n"
+            "quickcheck interface legacy code.\n"
                     + "\n"
                     + "Usage:\n"
                     + "\tcorfu_layout query <address>:<port> [-d <level>] [-e epoch] [-p <qapp>]\n"
@@ -66,24 +62,23 @@ public class corfu_layout implements ICmdlet {
                     + " -h, --help  Show this screen\n"
                     + " --version  Show version\n";
 
-    @Override
-    public String[] main(String[] args) {
+    public static String[] main(String[] args) {
         if (args != null && args.length > 0 && args[0].contentEquals("reset")) {
             LayoutServer ls = CorfuServer.getLayoutServer();
             if (ls != null) {
                 ls.reset();
-                return cmdlet.ok();
+                return replyOk();
             } else {
-                return cmdlet.err("No active layout server");
+                return replyErr("No active layout server");
             }
         }
         if (args != null && args.length > 0 && args[0].contentEquals("reboot")) {
             LayoutServer ls = CorfuServer.getLayoutServer();
             if (ls != null) {
                 ls.reboot();
-                return cmdlet.ok();
+                return replyOk();
             } else {
-                return cmdlet.err("No active layout server");
+                return replyErr("No active layout server");
             }
         }
 
@@ -92,7 +87,7 @@ public class corfu_layout implements ICmdlet {
                 new Docopt(USAGE).withVersion(GitRepositoryState.getRepositoryState().describe).parse(args);
 
         // Configure base options
-        configureBase(opts);
+        // configureBase(opts);
 
         // Parse host address and port
         String addressport = (String) opts.get("<address>:<port>");
@@ -131,32 +126,32 @@ public class corfu_layout implements ICmdlet {
                     log.trace("Cannot set router's epoch");
                 }
             } catch (Exception e) {
-                return cmdlet.err("ERROR Exception getting initial epoch " + e.getCause());
+                return replyErr("ERROR Exception getting initial epoch " + e.getCause());
             }
         }
 
         if ((Boolean) opts.get("getClientID")) {
             String clientID = router.getClientID().toString();
-            return cmdlet.ok(clientID);
+            return replyOk(clientID);
         } else if ((Boolean) opts.get("query")) {
             try {
                 Layout l = router.getClient(LayoutClient.class).getLayout().get();
                 Gson gs = new GsonBuilder().setPrettyPrinting().create();
-                return cmdlet.ok("layout: " + gs.toJson(l));
+                return replyOk("layout: " + gs.toJson(l));
             } catch (ExecutionException ex) {
                 if (ex.getCause().getClass() == WrongEpochException.class) {
                     WrongEpochException we = (WrongEpochException) ex.getCause();
-                    return cmdlet.err("Exception during query",
+                    return replyErr("Exception during query",
                             ex.getCause().toString(),
                             "correctEpoch: " + we.getCorrectEpoch(),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 } else {
-                    return cmdlet.err("Exception during query",
+                    return replyErr("Exception during query",
                             ex.getCause().toString(),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 }
             } catch (Exception e) {
-                return cmdlet.err("ERROR Exception getting layout" + e);
+                return replyErr("ERROR Exception getting layout" + e);
             }
         } else if ((Boolean) opts.get("bootstrap")) {
             Layout l = getLayout(opts);
@@ -164,14 +159,14 @@ public class corfu_layout implements ICmdlet {
             try {
                 if (router.getClient(LayoutClient.class).bootstrapLayout(l).get()) {
                     router.getClient(ManagementClient.class).bootstrapManagement(l).get();
-                    return cmdlet.ok();
+                    return replyOk();
                 } else {
-                    return cmdlet.err("NACK");
+                    return replyErr("NACK");
                 }
             } catch (ExecutionException ex) {
-                return cmdlet.err("Exception bootstrapping layout", ex.getCause().toString());
+                return replyErr("Exception bootstrapping layout", ex.getCause().toString());
             } catch (Exception e) {
-                return cmdlet.err("Exception bootstrapping layout", e.toString());
+                return replyErr("Exception bootstrapping layout", e.toString());
             }
         } else if ((Boolean) opts.get("set_epoch")) {
             log.debug("Set epoch with new epoch={}", epoch);
@@ -193,14 +188,14 @@ public class corfu_layout implements ICmdlet {
                 Layout tmpLayout = new Layout(ls, none1, none2, epoch);
                 tmpLayout.setRuntime(rt);
                 tmpLayout.moveServersToEpoch();
-                return cmdlet.ok();
+                return replyOk();
             } catch (WrongEpochException we) {
-                return cmdlet.err("Exception during set_epoch",
+                return replyErr("Exception during set_epoch",
                         we.getCause() == null ? "WrongEpochException" : we.getCause().toString(),
                         "correctEpoch: " + we.getCorrectEpoch(),
                         "stack: " + ExceptionUtils.getStackTrace(we));
             } catch (Exception e) {
-                return cmdlet.err("Exception during set_epoch", e.toString(), ExceptionUtils.getStackTrace(e));
+                return replyErr("Exception during set_epoch", e.toString(), ExceptionUtils.getStackTrace(e));
             }
         } else if ((Boolean) opts.get("prepare")) {
             long rank = Long.parseLong((String) opts.get("--rank"));
@@ -209,30 +204,30 @@ public class corfu_layout implements ICmdlet {
                 LayoutPrepareResponse r = router.getClient(LayoutClient.class).prepare(epoch, rank).get();
                 Layout r_layout = r.getLayout();
                 if (r_layout == null) {
-                    return cmdlet.ok("ignored: ignored");
+                    return replyOk("ignored: ignored");
                 } else {
-                    return cmdlet.ok("layout: " + r_layout.asJSONString());
+                    return replyOk("layout: " + r_layout.asJSONString());
                 }
             } catch (ExecutionException ex) {
                 if (ex.getCause().getClass() == OutrankedException.class) {
                     OutrankedException oe = (OutrankedException) ex.getCause();
-                    return cmdlet.err("Exception during prepare",
+                    return replyErr("Exception during prepare",
                                 ex.getCause().toString(),
                                 "newRank: " + Long.toString(oe.getNewRank()),
                                 "layout: " + (oe.getLayout() == null ? "" : oe.getLayout().asJSONString()));
                 } else if (ex.getCause().getClass() == WrongEpochException.class) {
                     WrongEpochException we = (WrongEpochException) ex.getCause();
-                    return cmdlet.err("Exception during prepare",
+                    return replyErr("Exception during prepare",
                             ex.getCause().toString(),
                             "correctEpoch: " + we.getCorrectEpoch(),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 } else {
-                    return cmdlet.err("Exception during prepare",
+                    return replyErr("Exception during prepare",
                                 ex.getCause().toString(),
                                 "stack: " + ExceptionUtils.getStackTrace(ex));
                 }
             } catch (Exception e) {
-                return cmdlet.err("Exception during prepare", e.toString(), ExceptionUtils.getStackTrace(e));
+                return replyErr("Exception during prepare", e.toString(), ExceptionUtils.getStackTrace(e));
             }
         } else if ((Boolean) opts.get("propose")) {
             long rank = Long.parseLong((String) opts.get("--rank"));
@@ -240,30 +235,30 @@ public class corfu_layout implements ICmdlet {
             log.debug("Propose with new rank={}, layout={}", rank, l);
             try {
                 if (router.getClient(LayoutClient.class).propose(l.getEpoch(), rank, l).get()) {
-                    return cmdlet.ok();
+                    return replyOk();
                 } else {
-                    return cmdlet.err("NACK");
+                    return replyErr("NACK");
                 }
             } catch (ExecutionException ex) {
                 if (ex.getCause().getClass() == OutrankedException.class) {
                     OutrankedException oe = (OutrankedException) ex.getCause();
-                    return cmdlet.err("Exception during propose",
+                    return replyErr("Exception during propose",
                             ex.getCause().toString(),
                             "newRank: " + Long.toString(oe.getNewRank()),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 } else if (ex.getCause().getClass() == WrongEpochException.class) {
                         WrongEpochException we = (WrongEpochException) ex.getCause();
-                        return cmdlet.err("Exception during propose",
+                        return replyErr("Exception during propose",
                                 ex.getCause().toString(),
                                 "correctEpoch: " + we.getCorrectEpoch(),
                                 "stack: " + ExceptionUtils.getStackTrace(ex));
                 } else {
-                    return cmdlet.err("Exception during propose",
+                    return replyErr("Exception during propose",
                                 ex.getCause().toString(),
                                 "stack: " + ExceptionUtils.getStackTrace(ex));
                 }
             } catch (Exception e) {
-                return cmdlet.err("Exception during propose",
+                return replyErr("Exception during propose",
                             e.toString(),
                             "stack: " + ExceptionUtils.getStackTrace(e));
             }
@@ -273,32 +268,32 @@ public class corfu_layout implements ICmdlet {
             log.debug("Propose with new rank={}", rank);
             try {
                 if (router.getClient(LayoutClient.class).committed(l.getEpoch(), l).get()) {
-                    return cmdlet.ok();
+                    return replyOk();
                 } else {
-                    return cmdlet.err("NACK");
+                    return replyErr("NACK");
                 }
             } catch (ExecutionException ex) {
                 if (ex.getCause().getClass() == WrongEpochException.class) {
                     WrongEpochException we = (WrongEpochException) ex.getCause();
-                    return cmdlet.err("Exception during commit",
+                    return replyErr("Exception during commit",
                             ex.getCause().toString(),
                             "correctEpoch: " + we.getCorrectEpoch(),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 } else {
-                    return cmdlet.err("Exception during commit",
+                    return replyErr("Exception during commit",
                             ex.getCause().toString(),
                             "stack: " + ExceptionUtils.getStackTrace(ex));
                 }
             } catch (Exception e) {
-                return cmdlet.err("Exception during commit",
+                return replyErr("Exception during commit",
                         e.toString(),
                         "stack: " + ExceptionUtils.getStackTrace(e));
             }
         }
-        return cmdlet.err("Hush, compiler.");
+        return replyErr("Hush, compiler.");
     }
 
-    Layout getLayout(Map<String, Object> opts) {
+    private static Layout getLayout(Map<String, Object> opts) {
         Layout oLayout = null;
 
         if ((Boolean) opts.getOrDefault("--single", false)) {
