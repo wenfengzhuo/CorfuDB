@@ -20,6 +20,7 @@ import org.corfudb.protocols.wireprotocol.ILogUnitEntry;
 import org.corfudb.protocols.wireprotocol.LogData;
 import org.corfudb.runtime.CorfuRuntime;
 import org.corfudb.runtime.clients.LogUnitClient;
+import org.corfudb.runtime.collections.SMRMap;
 import org.corfudb.runtime.exceptions.OverwriteException;
 import org.corfudb.util.CFUtils;
 import org.corfudb.util.Utils;
@@ -103,15 +104,24 @@ public class AddressSpaceView extends AbstractView {
 
         String outPath = System.getenv("CORFU_RUNTIME_STATS");
         if (outPath != null && ! outPath.isEmpty()) {
-            String statPath = outPath + "/AddressSpaceView-" + this.hashCode() + "/";
-            File statDir = new File(statPath);
-            statDir.mkdirs();
-            final CsvReporter reporter = CsvReporter.forRegistry(metrics)
+            String statPath1 = outPath + "/AddressSpaceView-" + this.hashCode() + "/";
+            File statDir1 = new File(statPath1);
+            statDir1.mkdirs();
+            final CsvReporter reporter1 = CsvReporter.forRegistry(metrics)
                     .formatFor(Locale.US)
                     .convertRatesTo(TimeUnit.SECONDS)
                     .convertDurationsTo(TimeUnit.MILLISECONDS)
-                    .build(statDir);
-            reporter.start(1, TimeUnit.SECONDS);
+                    .build(statDir1);
+            reporter1.start(1, TimeUnit.SECONDS);
+            String statPath2 = outPath + "/SMRMap-" + this.hashCode() + "/";
+            File statDir2 = new File(statPath2);
+            statDir2.mkdirs();
+            final CsvReporter reporter2 = CsvReporter.forRegistry(SMRMap.metricsLog)
+                    .formatFor(Locale.US)
+                    .convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS)
+                    .build(statDir2);
+            reporter2.start(1, TimeUnit.SECONDS);
         }
     }
 
