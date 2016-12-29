@@ -25,7 +25,8 @@ public class SMRMap<K, V> extends HashMap<K, V> implements ISMRMap<K,V> {
      * Metrics: meter (counter), histogram
      */
     public static final MetricRegistry metricsLog = new MetricRegistry();
-    public static final Timer timerLogWrite = metricsLog.timer("write");
+    public static final Timer timerLogWrite = metricsLog.timer("log-write");
+    public static final Timer timerUpcall = metricsLog.timer("upcall");
 
     /**
      * Returns the value to which the specified key is mapped, or

@@ -370,19 +370,34 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                     }
 
                     // If a mutator, then log the update.
+                    if (mutatorAccessor != null) {
+                        ms.addStatement("long address" + CORFUSMR_FIELD);
+                    }
                     if (mutator != null || mutatorAccessor != null) {
                         if (metricsEnabled) {
-                            ms.addStatement("// YO YO");
+                            ms.addStatement("com.codahale.metrics.Timer.Context context = " +
+                                            classElement.getSimpleName().toString() + ".timerLogWrite.time()");
+                            ms.addCode("try {\n");
                         }
                         ms.addStatement(
+<<<<<<< 59f92ae28bb2cb103939ad15b801272b704112c5
                                 (mutatorAccessor != null ? "long address" + CORFUSMR_FIELD + " = " : "") +
                                 "proxy" + CORFUSMR_FIELD + ".logUpdate($S,$L$L$L)",
+=======
+                                (mutatorAccessor != null ? "    address" + CORFUSMR_FIELD + " = " : "    ") +
+                                "proxy" + CORFUSMR_FIELD + ".logUpdate($S$L$L)",
+>>>>>>> WIP: added log-write latency
                                 getSMRFunctionName(smrMethod),
                                 m.hasConflictAnnotations ? conflictField : "null",
                                 smrMethod.getParameters().size() > 0 ? "," : "",
                                 smrMethod.getParameters().stream()
                                     .map(VariableElement::getSimpleName)
                                     .collect(Collectors.joining(", ")));
+                        if (metricsEnabled) {
+                            ms.addCode("} finally {\n");
+                            ms.addStatement("    context.stop()");
+                            ms.addCode("}\n");
+                        }
                     }
 
 
@@ -469,6 +484,7 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
 
         typeSpecBuilder
                 .addSuperinterfaces(interfacesToAdd);
+        System.err.printf("YO YO interfacesToAdd = %s\n", interfacesToAdd.toString());
         // Mark the object as instrumented, so we don't instrument it again.
         typeSpecBuilder
                 .addAnnotation(AnnotationSpec.builder(InstrumentedCorfuObject.class).build());
