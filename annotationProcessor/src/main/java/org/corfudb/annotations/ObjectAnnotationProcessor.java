@@ -159,6 +159,9 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
     public void generateProxy(TypeElement classElement)
             throws IOException
     {
+        // Extract metrics status
+        CorfuObject annotation = classElement.getAnnotation(CorfuObject.class);
+        boolean metricsEnabled = annotation.metricsEnabled();
         // Extract the package name for the class. We'll need this to generate the proxy file.
         String packageName = elementUtils.getPackageOf(classElement).toString();
         // Calculate the name of the proxy, which appends $CORFUSMR to the class name.
@@ -368,6 +371,9 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
 
                     // If a mutator, then log the update.
                     if (mutator != null || mutatorAccessor != null) {
+                        if (metricsEnabled) {
+                            ms.addStatement("// YO YO");
+                        }
                         ms.addStatement(
                                 (mutatorAccessor != null ? "long address" + CORFUSMR_FIELD + " = " : "") +
                                 "proxy" + CORFUSMR_FIELD + ".logUpdate($S,$L$L$L)",

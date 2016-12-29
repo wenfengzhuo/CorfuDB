@@ -1,5 +1,7 @@
 package org.corfudb.runtime.collections;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import org.corfudb.annotations.CorfuObject;
 import org.corfudb.annotations.InterfaceOverride;
 import org.corfudb.annotations.TransactionalMethod;
@@ -16,8 +18,14 @@ import java.util.function.Function;
 /**
  * Created by mwei on 1/7/16.
  */
-@CorfuObject
+@CorfuObject(metricsEnabled = true)
 public class SMRMap<K, V> extends HashMap<K, V> implements ISMRMap<K,V> {
+
+    /**
+     * Metrics: meter (counter), histogram
+     */
+    public static final MetricRegistry metricsLog = new MetricRegistry();
+    public static final Timer timerLogWrite = metricsLog.timer("write");
 
     /**
      * Returns the value to which the specified key is mapped, or
