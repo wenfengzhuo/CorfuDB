@@ -28,6 +28,7 @@ public class SMRMap<K, V> extends HashMap<K, V> implements ISMRMap<K,V> {
     public static final MetricRegistry metricsLog = new MetricRegistry();
     public static final Timer timerLogWrite = metricsLog.timer("log-write");
     public static final Timer timerUpcall = metricsLog.timer("upcall");
+    public static final Timer timerTxn = metricsLog.timer("txn");
     public static final Counter counterTxnRetry1 = metricsLog.counter("txn-retry1");
     public static final Counter counterTxnRetryN = metricsLog.counter("txn-retryN");
 
