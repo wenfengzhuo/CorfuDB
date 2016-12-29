@@ -20,6 +20,7 @@ import org.corfudb.protocols.wireprotocol.ILogUnitEntry;
 import org.corfudb.protocols.wireprotocol.LogData;
 import org.corfudb.runtime.CorfuRuntime;
 import org.corfudb.runtime.clients.LogUnitClient;
+import org.corfudb.runtime.collections.FGMap;
 import org.corfudb.runtime.collections.SMRMap;
 import org.corfudb.runtime.exceptions.OverwriteException;
 import org.corfudb.util.CFUtils;
@@ -122,6 +123,15 @@ public class AddressSpaceView extends AbstractView {
                     .convertDurationsTo(TimeUnit.MILLISECONDS)
                     .build(statDir2);
             reporter2.start(1, TimeUnit.SECONDS);
+            String statPath3 = outPath + "/FGMap-" + this.hashCode() + "/";
+            File statDir3 = new File(statPath3);
+            statDir3.mkdirs();
+            final CsvReporter reporter3 = CsvReporter.forRegistry(FGMap.metricsLog)
+                    .formatFor(Locale.US)
+                    .convertRatesTo(TimeUnit.SECONDS)
+                    .convertDurationsTo(TimeUnit.MILLISECONDS)
+                    .build(statDir3);
+            reporter3.start(1, TimeUnit.SECONDS);
         }
     }
 
