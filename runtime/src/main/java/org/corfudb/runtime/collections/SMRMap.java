@@ -1,5 +1,6 @@
 package org.corfudb.runtime.collections;
 
+import com.codahale.metrics.Counter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import org.corfudb.annotations.CorfuObject;
@@ -27,6 +28,8 @@ public class SMRMap<K, V> extends HashMap<K, V> implements ISMRMap<K,V> {
     public static final MetricRegistry metricsLog = new MetricRegistry();
     public static final Timer timerLogWrite = metricsLog.timer("log-write");
     public static final Timer timerUpcall = metricsLog.timer("upcall");
+    public static final Counter counterTxnRetry1 = metricsLog.counter("txn-retry1");
+    public static final Counter counterTxnRetryN = metricsLog.counter("txn-retryN");
 
     /**
      * Returns the value to which the specified key is mapped, or

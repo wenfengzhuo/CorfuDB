@@ -410,6 +410,13 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                     }
                     // If transactional, begin the transaction
                     else if (transactional != null) {
+                        String txRetryFunction = metricsEnabled ?
+                                "(count) -> {\n" +
+                                "    if (count == 1) { " + classElement.getSimpleName().toString() + ".counterTxnRetry1.inc(); }\n" +
+                                "    " + classElement.getSimpleName().toString() + ".counterTxnRetryN.inc();\n" +
+                                "}" :
+                                "(unused) -> {}";
+                        metricsCtx = addMetricsWrapperStart(metricsEnabled, metricsCtx, ms, classElement);
                         ms.addCode(smrMethod.getReturnType().getKind().equals(TypeKind.VOID) ?
                                 "proxy" + CORFUSMR_FIELD + ".TXExecute(() -> {":
                                 "return proxy" + CORFUSMR_FIELD + ".TXExecute(() -> {"
@@ -423,9 +430,11 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                                         .map(VariableElement::getSimpleName)
                                         .collect(Collectors.joining(", ")));
                         ms.addCode(smrMethod.getReturnType().getKind().equals(TypeKind.VOID) ?
-                                "return null; });":
-                                "});"
+                                "return null; }, " + txRetryFunction + ");\n":
+                                "}, " + txRetryFunction + ");\n"
+
                         );
+                        addMetricsWrapperStop(metricsEnabled, ms);
                     }
                     else if (smrMethod.getAnnotation(PassThrough.class) != null) {
                         ms.addStatement("$L super.$L($L)",
