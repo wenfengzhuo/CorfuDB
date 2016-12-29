@@ -373,31 +373,19 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                     if (mutatorAccessor != null) {
                         ms.addStatement("long address" + CORFUSMR_FIELD);
                     }
+                    boolean metricsCtx = false;
                     if (mutator != null || mutatorAccessor != null) {
-                        if (metricsEnabled) {
-                            ms.addStatement("com.codahale.metrics.Timer.Context context = " +
-                                            classElement.getSimpleName().toString() + ".timerLogWrite.time()");
-                            ms.addCode("try {\n");
-                        }
+                        metricsCtx = addMetricsWrapperStart(metricsEnabled, metricsCtx, ms, classElement);
                         ms.addStatement(
-<<<<<<< 59f92ae28bb2cb103939ad15b801272b704112c5
-                                (mutatorAccessor != null ? "long address" + CORFUSMR_FIELD + " = " : "") +
+                                (mutatorAccessor != null ? "long address" + CORFUSMR_FIELD + " = " : "    ") +
                                 "proxy" + CORFUSMR_FIELD + ".logUpdate($S,$L$L$L)",
-=======
-                                (mutatorAccessor != null ? "    address" + CORFUSMR_FIELD + " = " : "    ") +
-                                "proxy" + CORFUSMR_FIELD + ".logUpdate($S$L$L)",
->>>>>>> WIP: added log-write latency
                                 getSMRFunctionName(smrMethod),
                                 m.hasConflictAnnotations ? conflictField : "null",
                                 smrMethod.getParameters().size() > 0 ? "," : "",
                                 smrMethod.getParameters().stream()
                                     .map(VariableElement::getSimpleName)
                                     .collect(Collectors.joining(", ")));
-                        if (metricsEnabled) {
-                            ms.addCode("} finally {\n");
-                            ms.addStatement("    context.stop()");
-                            ms.addCode("}\n");
-                        }
+                        addMetricsWrapperStop(metricsEnabled, ms);
                     }
 
 
@@ -406,15 +394,18 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                         // If the return to the mutatorAcessor is void, we don't need
                         // to do anything...
                         if (!smrMethod.getReturnType().getKind().equals(TypeKind.VOID)) {
-                            ms.addStatement("return (" +
-                                    ParameterizedTypeName.get(smrMethod.getReturnType())
-                                    + ") proxy" + CORFUSMR_FIELD
+                            ms.addStatement(ParameterizedTypeName.get(smrMethod.getReturnType())
+                                    + " res");
+                            metricsCtx = addMetricsWrapperStart(metricsEnabled, metricsCtx, ms, classElement);
+                            ms.addStatement("    res = " + "proxy" + CORFUSMR_FIELD
                                     + ".getUpcallResult(address"
                                     + CORFUSMR_FIELD
                                     +  ", "
                                     + (m.hasConflictAnnotations ?
                                             conflictField: "null")
                                     + ")");
+                            addMetricsWrapperStop(metricsEnabled, ms);
+                            ms.addStatement("return res");
                         }
                     }
                     // If transactional, begin the transaction
@@ -728,5 +719,25 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                                 != null)
                         .map(y -> y.getSimpleName())
                         .collect(Collectors.joining(", ")));
+    }
+
+    private boolean addMetricsWrapperStart(boolean metricsEnabled, boolean metricsCtx,
+                                           MethodSpec.Builder ms, TypeElement classElement) {
+        if (metricsEnabled) {
+            if (!metricsCtx) {
+                ms.addStatement("com.codahale.metrics.Timer.Context context");
+            }
+            ms.addStatement("context = " + classElement.getSimpleName().toString() + ".timerLogWrite.time()");
+            ms.addCode("try {\n");
+        }
+        return true;
+    }
+
+    private void addMetricsWrapperStop(boolean metricsEnabled, MethodSpec.Builder ms) {
+        if (metricsEnabled) {
+            ms.addCode("} finally {\n");
+            ms.addStatement("    context.stop()");
+            ms.addCode("}\n");
+        }
     }
 }
