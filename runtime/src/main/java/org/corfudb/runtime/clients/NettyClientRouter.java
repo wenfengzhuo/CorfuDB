@@ -1,6 +1,7 @@
 package org.corfudb.runtime.clients;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import io.netty.bootstrap.Bootstrap;
@@ -57,8 +58,14 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
      * Metrics: meter (counter), histogram
      */
     public static final MetricRegistry metricsLog = new MetricRegistry();
+    public static Gauge<Integer> gaugeConnected;
     public static Timer timerConnect;
+    public static Timer timerSyncOp;
     public static Counter counterConnectFailed;
+    public static Counter counterSendDisconnected;
+    public static Counter counterSendTimeout;
+    public static Counter counterSyncOpSent;
+    public static Counter counterAsyncOpSent;
 
     /**
      * A random instance
@@ -170,8 +177,19 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         shutdown = true;
 
         String endpoint = new String(host + ":" + port);
+        gaugeConnected = metricsLog.register(endpoint + "-connected", new Gauge<Integer>() {
+                    @Override
+                    public Integer getValue() {
+                        return connected_p ? 1 : 0;
+                    }
+                });
         timerConnect = metricsLog.timer(endpoint + "-connect");
+        timerSyncOp = metricsLog.timer(endpoint + "-sync-op");
         counterConnectFailed = metricsLog.counter(endpoint + "-connect-failed");
+        counterSendDisconnected = metricsLog.counter(endpoint + "-send-disconnected");
+        counterSendTimeout = metricsLog.counter(endpoint + "-send-timeout");
+        counterSyncOpSent = metricsLog.counter(endpoint + "-sync-op-sent");
+        counterAsyncOpSent = metricsLog.counter(endpoint + "-async-op-sent");
 
         addClient(new BaseClient());
         start();
@@ -292,6 +310,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         channel.closeFuture().addListener((r) -> {
             connected_p = false;
             outstandingRequests.forEach((ReqID, reqCF) -> {
+                counterSendDisconnected.inc();
                 reqCF.completeExceptionally(new NetworkException("Disconnected", host + ":" + port));
                 outstandingRequests.remove(ReqID);
             });
@@ -302,6 +321,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
                         connectChannel(b, c);
                         return;
                     } catch (Exception ex) {
+                        counterConnectFailed.inc();
                         log.trace("Exception while reconnecting, retry in {} ms", timeoutRetry);
                         Thread.sleep(timeoutRetry);
                     }
@@ -343,8 +363,10 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
     public <T> CompletableFuture<T> sendMessageAndGetCompletable(ChannelHandlerContext ctx, CorfuMsg message) {
         if (!connected_p) {
             log.trace("Disconnected endpoint " + host + ":" + port);
+            counterSendDisconnected.inc();
             throw new NetworkException("Disconnected endpoint", host + ":" + port);
         } else {
+            Timer.Context context = timerSyncOp.time();
             // Get the next request ID.
             final long thisRequest = requestID.getAndIncrement();
             // Set the message fields.
@@ -361,10 +383,17 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
             } else {
                 ctx.writeAndFlush(message);
             }
+            counterSyncOpSent.inc();
             log.trace("Sent message: {}", message);
+            final CompletableFuture<T> cfElapsed = cf.thenApply(x ->
+                    {
+                        context.stop();
+                        return x;
+                    });
             // Generate a timeout future, which will complete exceptionally if the main future is not completed.
-            final CompletableFuture<T> cfTimeout = CFUtils.within(cf, Duration.ofMillis(timeoutResponse));
+            final CompletableFuture<T> cfTimeout = CFUtils.within(cfElapsed, Duration.ofMillis(timeoutResponse));
             cfTimeout.exceptionally(e -> {
+                counterSendTimeout.inc();
                 outstandingRequests.remove(thisRequest);
                 log.debug("Remove request {} due to timeout!", thisRequest);
                 return null;
@@ -397,6 +426,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         message.setEpoch(epoch);
         // Write this message out on the channel.
         outContext.writeAndFlush(message);
+        counterAsyncOpSent.inc();
         log.trace("Sent one-way message: {}", message);
     }
 

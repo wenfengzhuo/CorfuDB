@@ -1,7 +1,10 @@
 package org.corfudb.shell;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import clojure.java.api.Clojure;
 import clojure.lang.IFn;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by mwei on 11/18/16.
