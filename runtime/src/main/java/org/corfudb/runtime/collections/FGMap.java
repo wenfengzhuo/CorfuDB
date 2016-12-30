@@ -9,7 +9,6 @@ import org.corfudb.runtime.object.transactions.TransactionalContext;
 import sun.misc.CRC16;
 
 import java.util.*;
-import java.util.Timer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.zip.CRC32;
@@ -26,12 +25,12 @@ public class FGMap<K, V> extends AbstractCorfuWrapper<FGMap<K,V>>
     /**
      * Metrics: meter (counter), histogram
      */
-    public static final MetricRegistry metricsLog = new MetricRegistry();
-    public static final com.codahale.metrics.Timer timerLogWrite = metricsLog.timer("log-write");
-    public static final com.codahale.metrics.Timer timerUpcall = metricsLog.timer("upcall");
-    public static final com.codahale.metrics.Timer timerTxn = metricsLog.timer("txn");
-    public static final Counter counterTxnRetry1 = metricsLog.counter("txn-retry1");
-    public static final Counter counterTxnRetryN = metricsLog.counter("txn-retryN");
+    public static final MetricRegistry metrics = new MetricRegistry();
+    public static final com.codahale.metrics.Timer timerLogWrite = metrics.timer("log-write");
+    public static final com.codahale.metrics.Timer timerUpcall = metrics.timer("upcall");
+    public static final com.codahale.metrics.Timer timerTxn = metrics.timer("txn");
+    public static final Counter counterTxnRetry1 = metrics.counter("txn-retry1");
+    public static final Counter counterTxnRetryN = metrics.counter("txn-retryN");
 
     @Getter
     public final int numBuckets;

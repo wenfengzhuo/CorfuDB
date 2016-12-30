@@ -9,14 +9,11 @@ import io.netty.channel.ChannelHandlerContext;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections.bidimap.TreeBidiMap;
 import org.corfudb.protocols.wireprotocol.*;
 import org.corfudb.util.Utils;
 
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Array;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by mwei on 12/8/15.
@@ -37,14 +34,14 @@ public class BaseServer extends AbstractServer {
     /**
      * Metrics: meter (counter), histogram
      */
-    public static final MetricRegistry metricsLog = new MetricRegistry();
-    public static final Timer timerLogWrite = metricsLog.timer("write");
-    public static final Timer timerLogCommit = metricsLog.timer("commit");
-    public static final Timer timerLogRead = metricsLog.timer("read");
-    public static final Timer timerLogGcInterval = metricsLog.timer("gc-interval");
-    public static final Timer timerLogForceGc = metricsLog.timer("force-gc");
-    public static final Timer timerLogFillHole = metricsLog.timer("fill-hole");
-    public static final Timer timerLogTrim = metricsLog.timer("trim");
+    public static final MetricRegistry metrics = new MetricRegistry();
+    public static final Timer timerLogWrite = metrics.timer("write");
+    public static final Timer timerLogCommit = metrics.timer("commit");
+    public static final Timer timerLogRead = metrics.timer("read");
+    public static final Timer timerLogGcInterval = metrics.timer("gc-interval");
+    public static final Timer timerLogForceGc = metrics.timer("force-gc");
+    public static final Timer timerLogFillHole = metrics.timer("fill-hole");
+    public static final Timer timerLogTrim = metrics.timer("trim");
     public static final MetricRegistry metricsSeq = new MetricRegistry();
     public static final Timer timerSeqReq = metricsSeq.timer("token-req");
     public static final Counter counterTokenSum = metricsSeq.counter("token-sum");
@@ -78,7 +75,7 @@ public class BaseServer extends AbstractServer {
     @ServerHandler(type=CorfuMsgType.VERSION_REQUEST)
     private void getVersion(CorfuMsg msg, ChannelHandlerContext ctx, IServerRouter r) {
         Map<String,Object> logStats = new HashMap<>();
-        dumpTimers(metricsLog, logStats);
+        dumpTimers(metrics, logStats);
         Map<String,Object> seqStats = new HashMap<>();
         dumpTimers(metricsSeq, seqStats);
         seqStats.put("tokens-sum", counterTokenSum);

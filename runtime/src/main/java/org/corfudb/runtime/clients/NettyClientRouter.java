@@ -30,7 +30,6 @@ import org.corfudb.runtime.collections.SMRMap;
 import org.corfudb.runtime.exceptions.NetworkException;
 import org.corfudb.runtime.exceptions.WrongEpochException;
 import org.corfudb.util.CFUtils;
-import org.corfudb.util.retry.IRetry;
 
 import java.io.File;
 import java.time.Duration;
@@ -204,7 +203,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
                     String statPath2 = outPath + "/SMRMap-" + this.hashCode() + "/";
                     File statDir2 = new File(statPath2);
                     statDir2.mkdirs();
-                    final CsvReporter reporter2 = CsvReporter.forRegistry(SMRMap.metricsLog)
+                    final CsvReporter reporter2 = CsvReporter.forRegistry(SMRMap.metrics)
                             .formatFor(Locale.US)
                             .convertRatesTo(TimeUnit.SECONDS)
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
@@ -213,7 +212,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
                     String statPath3 = outPath + "/FGMap-" + this.hashCode() + "/";
                     File statDir3 = new File(statPath3);
                     statDir3.mkdirs();
-                    final CsvReporter reporter3 = CsvReporter.forRegistry(FGMap.metricsLog)
+                    final CsvReporter reporter3 = CsvReporter.forRegistry(FGMap.metrics)
                             .formatFor(Locale.US)
                             .convertRatesTo(TimeUnit.SECONDS)
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
