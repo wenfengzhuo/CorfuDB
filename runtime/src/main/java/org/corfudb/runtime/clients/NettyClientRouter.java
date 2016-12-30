@@ -218,6 +218,15 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
                             .convertDurationsTo(TimeUnit.MILLISECONDS)
                             .build(statDir3);
                     reporter3.start(1, TimeUnit.SECONDS);
+                    String statPath4 = outPath + "/LogUnitClient-" + this.hashCode() + "/";
+                    File statDir4 = new File(statPath4);
+                    statDir4.mkdirs();
+                    final CsvReporter reporter4 = CsvReporter.forRegistry(LogUnitClient.metrics)
+                            .formatFor(Locale.US)
+                            .convertRatesTo(TimeUnit.SECONDS)
+                            .convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(statDir4);
+                    reporter4.start(1, TimeUnit.SECONDS);
                 }
             }
         }
@@ -417,7 +426,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
             log.trace("Sent message: {}", message);
             final CompletableFuture<T> cfElapsed = cf.thenApply(x -> {
                 context.stop();
-                try {Thread.sleep(1234); } catch (Exception e) {}
+                // DEBUGGING ONLY: try {Thread.sleep(1234); } catch (Exception e) {}
                 return x;
             });
             // Generate a timeout future, which will complete exceptionally if the main future is not completed.
