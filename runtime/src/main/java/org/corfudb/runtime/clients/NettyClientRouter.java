@@ -1,5 +1,8 @@
 package org.corfudb.runtime.clients;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -19,7 +22,6 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.codehaus.groovy.tools.shell.IO;
 import org.corfudb.protocols.wireprotocol.CorfuMsg;
 import org.corfudb.protocols.wireprotocol.CorfuMsgType;
 import org.corfudb.protocols.wireprotocol.NettyCorfuMessageDecoder;
@@ -50,6 +52,13 @@ import java.util.concurrent.atomic.AtomicLong;
 @ChannelHandler.Sharable
 public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         implements IClientRouter {
+
+    /**
+     * Metrics: meter (counter), histogram
+     */
+    public static final MetricRegistry metricsLog = new MetricRegistry();
+    public static Timer timerConnect;
+    public static Counter counterConnectFailed;
 
     /**
      * A random instance
@@ -160,6 +169,10 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         outstandingRequests = new ConcurrentHashMap<>();
         shutdown = true;
 
+        String endpoint = new String(host + ":" + port);
+        timerConnect = metricsLog.timer(endpoint + "-connect");
+        counterConnectFailed = metricsLog.counter(endpoint + "-connect-failed");
+
         addClient(new BaseClient());
         start();
     }
@@ -264,12 +277,18 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
     }
 
     synchronized void connectChannel(Bootstrap b, long c) {
-        ChannelFuture cf = b.connect(host, port);
-        cf.syncUninterruptibly();
-        if (!cf.awaitUninterruptibly(timeoutConnect)) {
-            throw new NetworkException(c + " Timeout connecting to endpoint", host + ":" + port);
+        Timer.Context context = timerConnect.time();
+        try {
+            ChannelFuture cf = b.connect(host, port);
+            cf.syncUninterruptibly();
+            if (!cf.awaitUninterruptibly(timeoutConnect)) {
+                counterConnectFailed.inc();
+                throw new NetworkException(c + " Timeout connecting to endpoint", host + ":" + port);
+            }
+            channel = cf.channel();
+        } finally {
+            context.stop();
         }
-        channel = cf.channel();
         channel.closeFuture().addListener((r) -> {
             connected_p = false;
             outstandingRequests.forEach((ReqID, reqCF) -> {

@@ -103,6 +103,10 @@ public class AddressSpaceView extends AbstractView {
             }
         });
 
+        // TODO: Move this stats dumping to a more appropriate place as stats dialog progresses.
+        // At the moment, AddressSpaceView stats are on a per-runtime basis, but SMRMap and
+        // FGMap stats are static/spanning multiple client runtimes.  This mix isn't intended
+        // to be good but instead to start dialog & iteration.
         String outPath = System.getenv("CORFU_RUNTIME_STATS");
         if (outPath != null && ! outPath.isEmpty()) {
             String statPath1 = outPath + "/AddressSpaceView-" + this.hashCode() + "/";
