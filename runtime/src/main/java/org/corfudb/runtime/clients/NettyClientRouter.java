@@ -25,9 +25,12 @@ import org.corfudb.protocols.wireprotocol.CorfuMsg;
 import org.corfudb.protocols.wireprotocol.CorfuMsgType;
 import org.corfudb.protocols.wireprotocol.NettyCorfuMessageDecoder;
 import org.corfudb.protocols.wireprotocol.NettyCorfuMessageEncoder;
+import org.corfudb.runtime.collections.FGMap;
+import org.corfudb.runtime.collections.SMRMap;
 import org.corfudb.runtime.exceptions.NetworkException;
 import org.corfudb.runtime.exceptions.WrongEpochException;
 import org.corfudb.util.CFUtils;
+import org.corfudb.util.retry.IRetry;
 
 import java.io.File;
 import java.time.Duration;
@@ -171,30 +174,53 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
         shutdown = true;
 
         String endpoint = new String(host + ":" + port);
-        gaugeConnected = metrics.register(endpoint + "-connected", new Gauge<Integer>() {
+        synchronized (metrics) {
+            if (!metrics.getNames().contains(endpoint + "-connected")) {
+                gaugeConnected = metrics.register(endpoint + "-connected", new Gauge<Integer>() {
                     @Override
                     public Integer getValue() {
                         return connected_p ? 1 : 0;
                     }
                 });
-        timerConnect = metrics.timer(endpoint + "-connect");
-        timerSyncOp = metrics.timer(endpoint + "-sync-op");
-        counterConnectFailed = metrics.counter(endpoint + "-connect-failed");
-        counterSendDisconnected = metrics.counter(endpoint + "-send-disconnected");
-        counterSendTimeout = metrics.counter(endpoint + "-send-timeout");
-        counterAsyncOpSent = metrics.counter(endpoint + "-async-op-sent");
-        // TODO: Move this stats dumping to a more appropriate place as stats dialog progresses.
-        String outPath = System.getenv("CORFU_RUNTIME_STATS");
-        if (outPath != null && ! outPath.isEmpty()) {
-            String statPath1 = outPath + "/client-" + endpoint + "-" + this.hashCode() + "/";
-            File statDir1 = new File(statPath1);
-            statDir1.mkdirs();
-            final CsvReporter reporter1 = CsvReporter.forRegistry(metrics)
-                    .formatFor(Locale.US)
-                    .convertRatesTo(TimeUnit.SECONDS)
-                    .convertDurationsTo(TimeUnit.MILLISECONDS)
-                    .build(statDir1);
-            reporter1.start(1, TimeUnit.SECONDS);
+                timerConnect = metrics.timer(endpoint + "-connect");
+                timerSyncOp = metrics.timer(endpoint + "-sync-op");
+                counterConnectFailed = metrics.counter(endpoint + "-connect-failed");
+                counterSendDisconnected = metrics.counter(endpoint + "-send-disconnected");
+                counterSendTimeout = metrics.counter(endpoint + "-send-timeout");
+                counterAsyncOpSent = metrics.counter(endpoint + "-async-op-sent");
+                // TODO: Move this stats dumping to a more appropriate place as stats dialog progresses.
+                // SMRMap and FGMap stats are static/spanning multiple client runtimes.
+                String outPath = System.getenv("CORFU_RUNTIME_STATS");
+                if (outPath != null && !outPath.isEmpty()) {
+                    String statPath1 = outPath + "/client-" + endpoint + "-" + this.hashCode() + "/";
+                    File statDir1 = new File(statPath1);
+                    statDir1.mkdirs();
+                    final CsvReporter reporter1 = CsvReporter.forRegistry(metrics)
+                            .formatFor(Locale.US)
+                            .convertRatesTo(TimeUnit.SECONDS)
+                            .convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(statDir1);
+                    reporter1.start(1, TimeUnit.SECONDS);
+                    String statPath2 = outPath + "/SMRMap-" + this.hashCode() + "/";
+                    File statDir2 = new File(statPath2);
+                    statDir2.mkdirs();
+                    final CsvReporter reporter2 = CsvReporter.forRegistry(SMRMap.metricsLog)
+                            .formatFor(Locale.US)
+                            .convertRatesTo(TimeUnit.SECONDS)
+                            .convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(statDir2);
+                    reporter2.start(1, TimeUnit.SECONDS);
+                    String statPath3 = outPath + "/FGMap-" + this.hashCode() + "/";
+                    File statDir3 = new File(statPath3);
+                    statDir3.mkdirs();
+                    final CsvReporter reporter3 = CsvReporter.forRegistry(FGMap.metricsLog)
+                            .formatFor(Locale.US)
+                            .convertRatesTo(TimeUnit.SECONDS)
+                            .convertDurationsTo(TimeUnit.MILLISECONDS)
+                            .build(statDir3);
+                    reporter3.start(1, TimeUnit.SECONDS);
+                }
+            }
         }
 
         addClient(new BaseClient());
@@ -392,6 +418,7 @@ public class NettyClientRouter extends SimpleChannelInboundHandler<CorfuMsg>
             log.trace("Sent message: {}", message);
             final CompletableFuture<T> cfElapsed = cf.thenApply(x -> {
                 context.stop();
+                try {Thread.sleep(1234); } catch (Exception e) {}
                 return x;
             });
             // Generate a timeout future, which will complete exceptionally if the main future is not completed.

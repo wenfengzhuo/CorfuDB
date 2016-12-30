@@ -104,9 +104,8 @@ public class AddressSpaceView extends AbstractView {
         });
 
         // TODO: Move this stats dumping to a more appropriate place as stats dialog progresses.
-        // At the moment, AddressSpaceView stats are on a per-runtime basis, but SMRMap and
-        // FGMap stats are static/spanning multiple client runtimes.  This mix isn't intended
-        // to be good but instead to start dialog & iteration.
+        // At the moment, AddressSpaceView stats are on a per-runtime basis.
+        // This isn't intended to be good but instead to start dialog & iteration.
         String outPath = System.getenv("CORFU_RUNTIME_STATS");
         if (outPath != null && ! outPath.isEmpty()) {
             String statPath1 = outPath + "/AddressSpaceView-" + this.hashCode() + "/";
@@ -118,24 +117,6 @@ public class AddressSpaceView extends AbstractView {
                     .convertDurationsTo(TimeUnit.MILLISECONDS)
                     .build(statDir1);
             reporter1.start(1, TimeUnit.SECONDS);
-            String statPath2 = outPath + "/SMRMap-" + this.hashCode() + "/";
-            File statDir2 = new File(statPath2);
-            statDir2.mkdirs();
-            final CsvReporter reporter2 = CsvReporter.forRegistry(SMRMap.metricsLog)
-                    .formatFor(Locale.US)
-                    .convertRatesTo(TimeUnit.SECONDS)
-                    .convertDurationsTo(TimeUnit.MILLISECONDS)
-                    .build(statDir2);
-            reporter2.start(1, TimeUnit.SECONDS);
-            String statPath3 = outPath + "/FGMap-" + this.hashCode() + "/";
-            File statDir3 = new File(statPath3);
-            statDir3.mkdirs();
-            final CsvReporter reporter3 = CsvReporter.forRegistry(FGMap.metricsLog)
-                    .formatFor(Locale.US)
-                    .convertRatesTo(TimeUnit.SECONDS)
-                    .convertDurationsTo(TimeUnit.MILLISECONDS)
-                    .build(statDir3);
-            reporter3.start(1, TimeUnit.SECONDS);
         }
     }
 
