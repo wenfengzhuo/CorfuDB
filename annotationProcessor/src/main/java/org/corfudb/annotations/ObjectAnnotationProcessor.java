@@ -378,7 +378,7 @@ public class ObjectAnnotationProcessor extends AbstractProcessor {
                         metricsCtx = addMetricsWrapperStart(metricsEnabled, metricsCtx, ms,
                                                             classElement, "timerLogWrite");
                         ms.addStatement(
-                                (mutatorAccessor != null ? "long address" + CORFUSMR_FIELD + " = " : "    ") +
+                                (mutatorAccessor != null ? "     address" + CORFUSMR_FIELD + " = " : "    ") +
                                 "proxy" + CORFUSMR_FIELD + ".logUpdate($S,$L$L$L)",
                                 getSMRFunctionName(smrMethod),
                                 m.hasConflictAnnotations ? conflictField : "null",
